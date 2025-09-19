@@ -14,6 +14,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import AdminUsers from './pages/admin/Users';
 import AdminStores from './pages/admin/Stores';
 import AdminUserDetails from './pages/admin/UserDetails';
+import AdminStoreDetails from './pages/admin/StoreDetails';
 
 // User Pages
 import UserStores from './pages/user/Stores';
@@ -88,6 +89,13 @@ const AppRoutes = () => {
         <ProtectedRoute requiredRole="ADMIN">
           <Layout>
             <AdminStores />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/admin/stores/:id" element={
+        <ProtectedRoute requiredRole="ADMIN">
+          <Layout>
+            <AdminStoreDetails />
           </Layout>
         </ProtectedRoute>
       } />

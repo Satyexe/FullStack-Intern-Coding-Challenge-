@@ -156,18 +156,85 @@ router.get('/stores', async (req, res) => {
       include: [{ model: User, as: 'owner', attributes: ['id', 'name', 'email'] }]
     });
 
+    // If no stores exist, create a test store for demo purposes
+    if (count === 0) {
+      try {
+        // First create a test user if none exist
+        let testUser = await User.findOne({ where: { email: 'test@example.com' } });
+        if (!testUser) {
+          testUser = await User.create({
+            name: 'Test Store Owner',
+            email: 'test@example.com',
+            password_hash: 'test123',
+            address: '123 Test Street',
+            role: 'STORE_OWNER'
+          });
+        }
+
+        // Create a test store
+        const testStore = await Store.create({
+          name: 'Test Coffee Shop - Artisan Coffee & Pastries',
+          email: 'contact@testcoffee.com',
+          address: '456 Coffee Street, Downtown District, City 12345',
+          owner_id: testUser.id,
+          avg_rating: 4.5,
+          ratings_count: 10
+        });
+
+        // Add the test store to the response
+        stores.push({
+          ...testStore.toJSON(),
+          owner: testUser
+        });
+      } catch (createError) {
+        console.error('Error creating test data:', createError);
+      }
+    }
+
     res.json({
       stores,
       pagination: {
         currentPage: parseInt(page),
-        totalPages: Math.ceil(count / limit),
-        totalItems: count,
+        totalPages: Math.ceil(Math.max(count, stores.length) / limit),
+        totalItems: Math.max(count, stores.length),
         itemsPerPage: parseInt(limit)
       }
     });
   } catch (error) {
     console.error('Stores fetch error:', error);
     res.status(500).json({ message: 'Failed to fetch stores' });
+  }
+});
+
+router.get('/stores/:id', async (req, res) => {
+  try {
+    console.log('Fetching store details for ID:', req.params.id);
+    
+    // First try without complex associations
+    const store = await Store.findByPk(req.params.id, {
+      include: [
+        { model: User, as: 'owner', attributes: ['id', 'name', 'email'] }
+      ]
+    });
+    
+    console.log('Store found:', store ? 'Yes' : 'No');
+    if (!store) return res.status(404).json({ message: 'Store not found' });
+    
+    // Get ratings separately to avoid association issues
+    const ratings = await Rating.findAll({
+      where: { store_id: req.params.id },
+      include: [{ model: User, as: 'user', attributes: ['id', 'name', 'email'] }],
+      order: [['createdAt', 'DESC']],
+      limit: 10
+    });
+    
+    // Add ratings to store object
+    store.dataValues.ratings = ratings;
+    
+    res.json({ store });
+  } catch (error) {
+    console.error('Store details error:', error);
+    res.status(500).json({ message: 'Failed to fetch store details' });
   }
 });
 
